@@ -1,0 +1,242 @@
+﻿<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Meteo - Bouches-du-Rhone (13)</title>
+    <meta name="theme-color" content="#1f2a44">
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+
+    <!-- Leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+
+    <!-- Proj4 for EPSG:2154 -> EPSG:4326 -->
+    <script src="https://cdn.jsdelivr.net/npm/proj4@2.9.0/dist/proj4.min.js"></script>
+</head>
+<body>
+    <div class="app">
+        <div class="dashboard-shell">
+            <aside class="logo-rail" aria-label="Logos partenaires">
+                <div class="logo-item">
+                    <img src="../data/image/logo.png" alt="Logo Meteo Dashboard">
+                </div>
+                <div class="logo-item">
+                    <img src="../data/image/IMG_5732.jpg" alt="Photo 5732">
+                </div>
+                <div class="logo-item">
+                    <img src="../data/image/logo_amu.png" alt="Logo AMU">
+                </div>
+            </aside>
+
+            <div class="dashboard-content">
+                <header class="hero">
+                    <div class="hero-top">
+                        <div class="hero-title">
+                            <span class="eyebrow">Meteo Dashboard</span>
+                            <h1>Analyse spatiale et climatique du departement des Bouches-du-Rhone</h1>
+                            <p class="hero-subtitle">Departement 13 - Stations, tendances et comparaisons</p>
+                        </div>
+                        <div id="metadata" class="hero-meta"></div>
+                    </div>
+                    <section class="kpi-row" id="statsCards"></section>
+                </header>
+
+                <main class="layout">
+            <section class="panel controls-panel">
+                <div class="panel-header">
+                    <h2>Controle et filtres</h2>
+                    <p>Selectionne une commune et explore les variables clefs.</p>
+                </div>
+
+                <div class="control-grid">
+                    <div class="control-group">
+                        <label for="communeSelect">Commune</label>
+                        <select id="communeSelect">
+                            <option value="">Chargement...</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label for="metricSelect">Variable principale</label>
+                        <select id="metricSelect">
+                            <option value="temperature">Temperatures</option>
+                            <option value="precipitation">Precipitations</option>
+                            <option value="vent">Vent</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label for="mapMetricSelect">Couche stations</label>
+                        <select id="mapMetricSelect">
+                            <option value="all">Toutes</option>
+                            <option value="temperature">Temperatures</option>
+                            <option value="precipitation">Precipitations</option>
+                            <option value="vent">Vent</option>
+                        </select>
+                    </div>
+                    <div class="control-group toggle-group">
+                        <label for="heatmapToggle">Carte de chaleur</label>
+                        <label class="toggle">
+                            <input type="checkbox" id="heatmapToggle">
+                            <span class="toggle-track"></span>
+                            <span class="toggle-label" id="heatmapToggleLabel">Activer heatmap</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="kpi-row" id="communeKpis"></div>
+
+                <div class="panel-divider"></div>
+
+                <div class="panel-header">
+                    <h2>Analyse spatiale</h2>
+                    <p>Surface continue interpolee sur le departement.</p>
+                </div>
+
+                <div class="control-grid">
+                    <div class="control-group toggle-group">
+                        <label for="spatialToggle">Analyse spatiale</label>
+                        <label class="toggle">
+                            <input type="checkbox" id="spatialToggle">
+                            <span class="toggle-track"></span>
+                            <span class="toggle-label" id="spatialToggleLabel">OFF</span>
+                        </label>
+                    </div>
+                    <div class="control-group">
+                        <label for="spatialVariable">Variable</label>
+                        <select id="spatialVariable">
+                            <option value="temperature">Temperature</option>
+                            <option value="precipitation">Precipitations</option>
+                            <option value="vent">Vent</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label for="spatialPeriod">Periode</label>
+                        <select id="spatialPeriod">
+                            <option value="day">Jour</option>
+                            <option value="month">Mois</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="spatial-summary" id="spatialSummary">
+                    <div class="summary-title">Resume spatial</div>
+                    <div class="summary-body">Active l'analyse spatiale pour afficher une valeur par commune.</div>
+                </div>
+
+                <div class="panel-divider"></div>
+
+                <div class="panel-header">
+                    <h2>Comparaison</h2>
+                    <p>Comparer deux communes sur une variable identique.</p>
+                </div>
+
+                <div class="comparison-controls">
+                    <select id="compare1" class="compare-select">
+                        <option value="">Commune 1</option>
+                    </select>
+                    <select id="compare2" class="compare-select">
+                        <option value="">Commune 2</option>
+                    </select>
+                    <select id="compareMetric" class="compare-select">
+                        <option value="temp_max">Temp max</option>
+                        <option value="temp_moy">Temp moy</option>
+                        <option value="temp_min">Temp min</option>
+                        <option value="precipitation">Precipitations</option>
+                        <option value="vent_max">Vent max</option>
+                        <option value="vent_moy">Vent moyen</option>
+                    </select>
+                    <button class="btn primary" id="compareBtn">Comparer</button>
+                </div>
+            </section>
+
+            <section class="panel map-panel">
+                <div class="panel-header">
+                    <h2>Carte interactive</h2>
+                    <p>Survol et clic pour filtrer par commune.</p>
+                </div>
+                <div class="map-shell">
+                    <div id="map" class="map-container"></div>
+                    <div id="mapLoader" class="map-loader">Chargement des limites...</div>
+                </div>
+                <div class="map-legend" id="mapLegend">
+                    <div class="legend-header">
+                        <span>Legende</span>
+                        <button class="legend-toggle" id="legendToggle" type="button">Masquer</button>
+                    </div>
+                    <div class="legend-content" id="legendContent"></div>
+                </div>
+            </section>
+
+            <section class="panel charts-panel">
+                <div class="panel-header">
+                    <h2>Courbes locales</h2>
+                    <p>Zoom sur la commune selectionnee.</p>
+                </div>
+                <div class="chart-card">
+                    <canvas id="meteoChart"></canvas>
+                </div>
+            </section>
+
+            <section class="panel analytics-panel">
+                <div class="panel-header">
+                    <h2>Panorama departemental</h2>
+                    <p>Comparaison rapide entre communes.</p>
+                </div>
+                <div class="analytics-grid" id="analyticsGrid"></div>
+            </section>
+
+            <section class="panel comparison-panel">
+                <div class="panel-header">
+                    <h2>Comparaison temporelle</h2>
+                    <p>Deux communes, une meme variable.</p>
+                </div>
+                <div class="chart-card">
+                    <canvas id="comparisonChart"></canvas>
+                </div>
+            </section>
+
+            <section class="panel table-panel">
+                <div class="panel-header">
+                    <h2>Tableau detaille</h2>
+                    <p>Tri, recherche et export CSV.</p>
+                </div>
+                <div class="table-controls">
+                    <button class="btn ghost" id="exportBtn">Exporter CSV</button>
+                    <input type="text" id="searchTable" placeholder="Rechercher une date, une valeur..." class="search-input">
+                </div>
+                <div class="table-wrapper">
+                    <table id="dataTable">
+                        <thead>
+                            <tr>
+                                <th data-column="date">Mois / Date</th>
+                                <th data-column="temp_min">Temp min (C)</th>
+                                <th data-column="temp_max">Temp max (C)</th>
+                                <th data-column="temp_moy">Temp moy (C)</th>
+                                <th data-column="precipitation">Precip (mm)</th>
+                                <th data-column="vent_moy">Vent moy (m/s)</th>
+                                <th data-column="vent_max">Vent max (m/s)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody"></tbody>
+                    </table>
+                </div>
+            </section>
+                </main>
+
+                <footer class="footer">
+                    <p>Dashboard Meteo - Departement 13 | Genere le <span id="dateGeneration"></span></p>
+                    <p>Donnees Meteo France | Visualisation avec Leaflet & Chart.js</p>
+                </footer>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js" defer></script>
+</body>
+</html>
