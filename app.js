@@ -343,8 +343,8 @@ async function loadGeoJsonLayers() {
 
     if (!deptReprojected || !communesReprojected) {
         const [deptRes, communeRes] = await Promise.all([
-            fetch('../data/raw/departement_13.geojson'),
-            fetch('../data/raw/communes_13.geojson')
+            fetch('data/raw/departement_13.geojson'),
+            fetch('data/raw/communes_13.geojson')
         ]);
 
         if (!deptRes.ok || !communeRes.ok) {
@@ -1241,7 +1241,7 @@ function setMapLegendContent(html) {
 
 async function loadSpatialIndex() {
     try {
-        const response = await fetch('../outputs/spatial/index.json');
+        const response = await fetch('outputs/spatial/index.json');
         if (!response.ok) {
             throw new Error('index missing');
         }
@@ -1618,7 +1618,7 @@ function pointInRing(point, ring) {
 function normalizeSpatialPath(pathValue) {
     if (!pathValue) return '';
     if (pathValue.startsWith('outputs/')) {
-        return '../' + pathValue;
+        return pathValue;
     }
     if (pathValue.startsWith('..')) {
         return pathValue;
